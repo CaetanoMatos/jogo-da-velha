@@ -1,11 +1,17 @@
 import tkinter as tk
 from tkinter import messagebox
 import math
+import time
+import sys
+
+sys.stdout.reconfigure(encoding='utf-8')
 
 # representação dos jogadores
 HUMANO = 'X'
 IA = 'O'
 VAZIO = ' '
+
+nos_avaliados = 0 
 
 # --- lógica do jogo e ia (minimax + alfa-beta) ---
 
@@ -34,8 +40,11 @@ def avaliar(tabuleiro):
     else:
         return 0
 
-def minimax(tabuleiro, profundidade, alpha, beta, maximizando):
-    """algoritmo minimax com poda alfa-beta."""
+def minimax(tabuleiro, profundidade, alpha, beta, maximizando, usar_poda):
+    """algoritmo minimax que pode rodar puro ou com poda alfa-beta dependendo do parâmetro."""
+    global nos_avaliados
+    nos_avaliados += 1 # incrementa o contador cada vez que a ia "pensa" em um tabuleiro
+
     pontuacao = avaliar(tabuleiro)
 
     if pontuacao == 10 or pontuacao == -10:
@@ -48,40 +57,61 @@ def minimax(tabuleiro, profundidade, alpha, beta, maximizando):
         for i in range(9):
             if tabuleiro[i] == VAZIO:
                 tabuleiro[i] = IA
-                pontuacao_atual = minimax(tabuleiro, profundidade + 1, alpha, beta, False)
+                pontuacao_atual = minimax(tabuleiro, profundidade + 1, alpha, beta, False, usar_poda)
                 tabuleiro[i] = VAZIO
                 melhor_pontuacao = max(melhor_pontuacao, pontuacao_atual)
                 alpha = max(alpha, melhor_pontuacao)
-                if beta <= alpha:
-                    break # poda alfa-beta
+                
+                # se o modo poda estiver ativo, realiza o corte
+                if usar_poda and (beta <= alpha):
+                    break 
         return melhor_pontuacao
     else:
         pior_pontuacao = math.inf
         for i in range(9):
             if tabuleiro[i] == VAZIO:
                 tabuleiro[i] = HUMANO
-                pontuacao_atual = minimax(tabuleiro, profundidade + 1, alpha, beta, True)
+                pontuacao_atual = minimax(tabuleiro, profundidade + 1, alpha, beta, True, usar_poda)
                 tabuleiro[i] = VAZIO
                 pior_pontuacao = min(pior_pontuacao, pontuacao_atual)
                 beta = min(beta, pior_pontuacao)
-                if beta <= alpha:
-                    break # poda alfa-beta
+                
+                # se o modo poda estiver ativo, realiza o corte
+                if usar_poda and (beta <= alpha):
+                    break 
         return pior_pontuacao
 
-def melhor_jogada_ia(tabuleiro):
-    """determina a melhor jogada possível para a ia."""
+def melhor_jogada_ia(tabuleiro, usar_poda):
+    """determina a melhor jogada possível para a ia e mede o desempenho."""
+    global nos_avaliados
+    nos_avaliados = 0 # zera o contador para a jogada atual
+    
+    inicio_tempo = time.perf_counter() # inicia o cronômetro
+
     melhor_pontuacao = -math.inf
     jogada = -1
 
     for i in range(9):
         if tabuleiro[i] == VAZIO:
             tabuleiro[i] = IA
-            pontuacao_atual = minimax(tabuleiro, 0, -math.inf, math.inf, False)
+            pontuacao_atual = minimax(tabuleiro, 0, -math.inf, math.inf, False, usar_poda)
             tabuleiro[i] = VAZIO
 
             if pontuacao_atual > melhor_pontuacao:
                 melhor_pontuacao = pontuacao_atual
                 jogada = i
+
+    fim_tempo = time.perf_counter() # para o cronômetro
+    tempo_ms = (fim_tempo - inicio_tempo) * 1000 # converte para milissegundos
+
+    # formata a string para exibir no console de forma clara
+    modo_str = "COM PODA ALFA-BETA" if usar_poda else "MINIMAX PURO (SEM PODA)"
+    
+    # exibe o resultado no terminal do vs code
+    print(f"--- DESEMPENHO DA IA: {modo_str} ---")
+    print(f"Jogada escolhida: posição {jogada}")
+    print(f"Nós avaliados: {nos_avaliados}")
+    print(f"Tempo de processamento: {tempo_ms:.2f} ms\n")
 
     return jogada
 
@@ -96,7 +126,7 @@ class JogoDaVelhaGUI:
         self.botoes = []
         
         # variáveis de controle de estado
-        self.modo_jogo = None # 'ia' ou 'humano'
+        self.modo_jogo = None # 'ia_poda', 'ia_puro' ou 'humano'
         self.jogador_atual = HUMANO # para rastrear de quem é a vez no modo humano vs humano
         
         # cria os dois frames (telas) principais
@@ -115,15 +145,19 @@ class JogoDaVelhaGUI:
             widget.destroy()
 
         titulo = tk.Label(self.frame_menu, text="escolha o modo de jogo", font=('Arial', 16, 'bold'))
-        titulo.pack(pady=20)
+        titulo.pack(pady=15)
 
-        btn_ia = tk.Button(self.frame_menu, text="1 jogador (vs ia)", font=('Arial', 12), width=20, height=2,
-                           command=lambda: self.iniciar_jogo('IA'))
-        btn_ia.pack(pady=10)
+        btn_ia_poda = tk.Button(self.frame_menu, text="1 jogador (IA COM Poda)", font=('Arial', 12), width=25, height=2,
+                                bg="#d4edda", command=lambda: self.iniciar_jogo('IA_PODA'))
+        btn_ia_poda.pack(pady=5)
 
-        btn_humano = tk.Button(self.frame_menu, text="2 jogadores (vs humano)", font=('Arial', 12), width=20, height=2,
+        btn_ia_puro = tk.Button(self.frame_menu, text="1 jogador (IA SEM Poda)", font=('Arial', 12), width=25, height=2,
+                                bg="#f8d7da", command=lambda: self.iniciar_jogo('IA_PURO'))
+        btn_ia_puro.pack(pady=5)
+
+        btn_humano = tk.Button(self.frame_menu, text="2 jogadores (vs humano)", font=('Arial', 12), width=25, height=2,
                                command=lambda: self.iniciar_jogo('HUMANO'))
-        btn_humano.pack(pady=10)
+        btn_humano.pack(pady=5)
 
     def iniciar_jogo(self, modo):
         """configura o estado inicial da partida e exibe o tabuleiro."""
@@ -164,8 +198,8 @@ class JogoDaVelhaGUI:
         if self.tabuleiro[idx] != VAZIO:
             return # ignora cliques em espaços já ocupados
 
-        # ---- lógica modo 1 jogador (vs ia) ----
-        if self.modo_jogo == 'IA':
+        # ---- lógica modo 1 jogador (vs ia - com ou sem poda) ----
+        if self.modo_jogo in ['IA_PODA', 'IA_PURO']:
             self.tabuleiro[idx] = HUMANO
             self.botoes[idx].config(text=HUMANO, fg='blue')
 
@@ -175,8 +209,11 @@ class JogoDaVelhaGUI:
 
             self.root.update() # atualiza a tela antes da ia "pensar"
             
+            # define qual versão do algoritmo usar
+            usar_poda = True if self.modo_jogo == 'IA_PODA' else False
+            
             # jogada da ia
-            movimento_ia = melhor_jogada_ia(self.tabuleiro)
+            movimento_ia = melhor_jogada_ia(self.tabuleiro, usar_poda)
             if movimento_ia != -1:
                 self.tabuleiro[movimento_ia] = IA
                 self.botoes[movimento_ia].config(text=IA, fg='red')
