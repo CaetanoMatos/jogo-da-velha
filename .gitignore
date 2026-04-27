@@ -1,23 +1,14 @@
-# arquivos compilados de python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# ambientes virtuais (caso você crie um)
 venv/
 env/
 .env/
 .venv/
-
-# configurações de ide (vs code e pycharm)
 .vscode/
 .idea/
-
-# arquivos temporários do windows
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-
-# logs e arquivos de sistema do uv (que tentamos usar antes)
 .uv/
 uv.lock
