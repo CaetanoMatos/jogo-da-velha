@@ -1,48 +1,36 @@
-# Relatório Técnico — Jogo da Velha com Inteligência Artificial
+# Implementação e Análise do Algoritmo Minimax com Poda Alfa-Beta para o Jogo da Velha
 
-**Disciplina:** Inteligência Artificial  
-**Aluno:** Ruan Vasconcelos  
-**Data:** 06 de maio de 2026  
-**Linguagem:** Python 3.x  
-**Repositório:** github.com/CaetanoMatos/jogo-da-velha
+**Caetano A. de Matos¹, Ruan Vasconcelos¹**
+
+¹Instituto Federal de Educação, Ciência e Tecnologia do Rio Grande do Sul  
+Campus Ibirubá  
+Rua Nelsi Ribas Fritsch, 1111 – CEP: 98200-000 – Ibirubá – RS – Brasil
+
+---
+
+***Abstract.** This article presents the implementation and comparative analysis of the Minimax algorithm with and without Alpha-Beta Pruning, applied to building an unbeatable artificial intelligence for the classic Tic-Tac-Toe game. The work describes the computational modeling used, including the board representation as a one-dimensional array, the evaluation function for terminal states, and the graphical interface developed for interactive play and performance visualization. Empirical tests demonstrated that Alpha-Beta Pruning reduces the number of evaluated nodes by approximately 90% without altering the quality of the AI's decisions, establishing itself as an indispensable optimization for tree-search algorithms in adversarial games.*
+
+***Resumo.** Este artigo apresenta a implementação e análise comparativa do algoritmo Minimax com e sem Poda Alfa-Beta, aplicado à construção de uma inteligência artificial imbatível para o clássico Jogo da Velha. O trabalho descreve a modelagem computacional utilizada, incluindo a representação do tabuleiro como vetor unidimensional, a função de avaliação de estados terminais e a interface gráfica desenvolvida para interação e visualização de desempenho. Os testes empíricos demonstraram que a Poda Alfa-Beta reduz em aproximadamente 90% a quantidade de nós avaliados sem alterar a qualidade das decisões da IA, consolidando-se como uma otimização indispensável para algoritmos de busca em árvore em jogos adversariais.*
 
 ---
 
 ## 1. Introdução
 
-Este relatório descreve a implementação de um Jogo da Velha (Tic-Tac-Toe) com Inteligência Artificial, desenvolvido em Python utilizando a biblioteca nativa Tkinter para interface gráfica. O objetivo central do projeto é demonstrar, de forma prática e comparável, o funcionamento do algoritmo de busca **Minimax** e o ganho de desempenho obtido com a aplicação da **Poda Alfa-Beta**.
+Este artigo apresenta o desenvolvimento e a análise de um sistema computacional voltado para o Jogo da Velha (*Tic-Tac-Toe*) com Inteligência Artificial, implementado em Python com interface gráfica desenvolvida na biblioteca nativa Tkinter. O desafio consiste em construir uma IA imbatível que selecione sempre a jogada ótima, respeitando as restrições do espaço de estados finito e completamente observável do jogo. O código-fonte completo do projeto pode ser acessado em <https://github.com/RuanVasco/ai-projects>.
 
-O sistema permite três modos de jogo:
+Para solucionar este problema de busca em árvore adversarial, foram implementadas e avaliadas duas variantes algorítmicas distintas: o **Minimax** puro, que realiza exploração exaustiva da árvore de decisão, e o **Minimax com Poda Alfa-Beta**, que elimina ramos irrelevantes da busca sem comprometer a otimalidade da solução. O trabalho detalha a modelagem matemática adotada — especificamente a representação do tabuleiro como vetor unidimensional e a função heurística de avaliação de estados — e o impacto da otimização por poda no desempenho computacional de cada método.
 
-| Modo | Descrição |
-|---|---|
-| 1 Jogador (IA com Poda) | Humano vs. IA com Minimax + Poda Alfa-Beta |
-| 1 Jogador (IA sem Poda) | Humano vs. IA com Minimax puro |
-| 2 Jogadores | Humano vs. Humano na mesma máquina |
+Além da análise teórica e da avaliação empírica de desempenho temporal, o projeto conta com uma interface desenvolvida para a seleção dinâmica do modo de jogo e a visualização comparativa dos resultados em tempo real. Este escopo constitui um estudo prático e direto sobre as vantagens da otimização por corte de ramos em algoritmos de busca adversarial no campo da Inteligência Artificial.
 
----
+## 2. Desenvolvimento
 
-## 2. Estrutura do Projeto
+O Jogo da Velha consiste em dois jogadores que alternam a marcação de `X` e `O` em uma grade 3×3, vencendo quem primeiro completar uma linha, coluna ou diagonal. O espaço de estados deste jogo possui, no máximo, 9! = 362.880 permutações possíveis de jogadas. Para solucioná-lo de forma ótima, foram implementadas duas variantes do algoritmo Minimax, cujas abordagens e resultados são detalhados a seguir.
 
-O projeto é composto por um único arquivo principal:
+A Figura 1 apresenta a interface desenvolvida para a seleção do modo de jogo e para a visualização em tempo real dos dados de desempenho da IA, permitindo a comparação direta entre as duas abordagens.
 
-```
-jogo-da-velha/
-├── main.py          # código-fonte completo (lógica + GUI)
-├── historico.json   # gerado em tempo de execução; registra partidas
-└── README.MD        # documentação de uso
-```
+**Figura 1.** Interface de seleção de modo de jogo e visualização de desempenho da IA (nós avaliados e tempo de execução em ms).
 
-O arquivo `main.py` está organizado em duas camadas bem definidas:
-
-1. **Camada de lógica e IA** — funções puras que operam sobre o tabuleiro (lista de 9 posições).
-2. **Camada de interface gráfica** — classe `JogoDaVelhaGUI` que gerencia janelas, botões e o histórico de partidas.
-
----
-
-## 3. Implementação
-
-### 3.1 Representação do Tabuleiro
+### 2.1. Representação do Tabuleiro e Estados Terminais
 
 O tabuleiro é representado como uma lista Python de 9 elementos, onde cada posição pode conter `'X'` (humano), `'O'` (IA) ou `' '` (vazio). O mapeamento de índices segue a grade 3×3:
 
@@ -54,42 +42,18 @@ O tabuleiro é representado como uma lista Python de 9 elementos, onde cada posi
 6 | 7 | 8
 ```
 
-### 3.2 Verificação de Estados Terminais
+A função `verificar_vencedor` percorre as 8 combinações vencedoras possíveis (3 linhas, 3 colunas e 2 diagonais) e retorna `True` se o jogador informado preencheu alguma delas. A função de avaliação heurística `avaliar` pondera o estado terminal do tabuleiro:
 
-A função `verificar_vencedor` percorre as 8 combinações vencedoras possíveis (3 linhas, 3 colunas e 2 diagonais) e retorna `True` se o jogador informado preencheu alguma delas.
-
-```python
-def verificar_vencedor(tabuleiro, jogador):
-    vitorias = [
-        [0,1,2],[3,4,5],[6,7,8],   # linhas
-        [0,3,6],[1,4,7],[2,5,8],   # colunas
-        [0,4,8],[2,4,6]            # diagonais
-    ]
-    for combinacao in vitorias:
-        if all(tabuleiro[c] == jogador for c in combinacao):
-            return True
-    return False
-```
-
-A função `verificar_empate` retorna `True` quando não existe mais nenhuma posição vazia no tabuleiro.
-
-A função `avaliar` retorna a pontuação heurística do estado atual:
-
-- `+10` → IA venceu  
-- `-10` → Humano venceu  
+- `+10` → IA venceu
+- `-10` → Humano venceu
 - `0` → empate ou jogo em andamento
 
-### 3.3 Algoritmo Minimax
+### 2.2. Minimax Puro
 
-O Minimax é um algoritmo de busca em árvore de decisão para jogos de dois jogadores, soma zero e informação perfeita. Ele assume que ambos os jogadores jogam de forma ótima: o jogador maximizador (IA) tenta maximizar a pontuação; o jogador minimizador (Humano) tenta minimizá-la.
-
-A implementação utiliza uma única função `minimax` com um parâmetro booleano `usar_poda` que controla se a otimização está ativa:
+O Minimax é um algoritmo de busca em árvore de decisão para jogos de dois jogadores, soma zero e informação perfeita. Ele assume que ambos os jogadores jogam de forma ótima: o jogador maximizador (IA, `'O'`) tenta maximizar a pontuação; o jogador minimizador (Humano, `'X'`) tenta minimizá-la. A partir do estado atual do tabuleiro, o algoritmo expande recursivamente toda a árvore de jogadas possíveis até atingir um estado terminal, propagando as pontuações de volta para a raiz e selecionando a jogada de maior valor para a IA.
 
 ```python
 def minimax(tabuleiro, profundidade, alpha, beta, maximizando, usar_poda):
-    global nos_avaliados
-    nos_avaliados += 1
-
     pontuacao = avaliar(tabuleiro)
     if pontuacao in (10, -10):
         return pontuacao
@@ -105,7 +69,7 @@ def minimax(tabuleiro, profundidade, alpha, beta, maximizando, usar_poda):
                 tabuleiro[i] = VAZIO
                 alpha = max(alpha, melhor)
                 if usar_poda and beta <= alpha:
-                    break           # corte beta
+                    break
         return melhor
     else:
         pior = math.inf
@@ -116,134 +80,69 @@ def minimax(tabuleiro, profundidade, alpha, beta, maximizando, usar_poda):
                 tabuleiro[i] = VAZIO
                 beta = min(beta, pior)
                 if usar_poda and beta <= alpha:
-                    break           # corte alfa
+                    break
         return pior
 ```
 
-### 3.4 Poda Alfa-Beta
+- **Configuração:** Busca exaustiva sem limite de profundidade; parâmetros `alpha` e `beta` presentes na assinatura, porém ignorados (`usar_poda = False`).
+- **Justificativa:** A exploração completa da árvore garante a decisão ótima em todos os casos. O comportamento de "força bruta" serve como linha de base (*baseline*) para quantificar o ganho real introduzido pela Poda Alfa-Beta.
 
-A Poda Alfa-Beta é uma otimização do Minimax que mantém dois valores auxiliares durante a busca:
+### 2.3. Minimax com Poda Alfa-Beta
 
-- **Alpha (α):** melhor pontuação já garantida para o maximizador (IA) em qualquer ponto acima na árvore.
-- **Beta (β):** melhor pontuação já garantida para o minimizador (Humano) em qualquer ponto acima na árvore.
+Inspirada no princípio de eliminação de ramos irrelevantes em árvores de decisão adversariais, a Poda Alfa-Beta estende o Minimax ao manter dois valores auxiliares durante a busca: **Alpha (α)**, a melhor pontuação já garantida para o maximizador em qualquer ponto acima na árvore, e **Beta (β)**, a melhor pontuação já garantida para o minimizador. Quando `beta ≤ alpha`, a exploração do ramo atual pode ser interrompida com segurança, pois o resultado jamais seria escolhido por um dos jogadores racionais.
 
-Quando `beta ≤ alpha`, a exploração daquele ramo pode ser interrompida com segurança, pois o resultado jamais será escolhido por um dos jogadores. Isso não altera a decisão final — apenas elimina subárvores irrelevantes.
-
-A Poda Alfa-Beta é chamada com valores iniciais `alpha = -∞` e `beta = +∞`:
+A implementação utiliza o mesmo corpo da função `minimax`, controlado pelo parâmetro booleano `usar_poda`. A chamada inicial é feita com:
 
 ```python
-minimax(tabuleiro, 0, -math.inf, math.inf, False, usar_poda)
+minimax(tabuleiro, 0, -math.inf, math.inf, False, usar_poda=True)
 ```
 
-### 3.5 Seleção da Melhor Jogada
+- **Configuração:** `alpha = -∞` e `beta = +∞` na raiz; cortes alfa e beta ativados em ambos os níveis da árvore (maximizador e minimizador).
+- **Justificativa:** A taxa de corte garante uma redução drástica (~90%) nos nós avaliados sem perda alguma de qualidade decisória. A IA permanece imbatível e a resposta torna-se praticamente instantânea mesmo na primeira jogada, quando a árvore está em profundidade máxima.
 
-A função `melhor_jogada_ia` itera sobre todas as posições vazias, simula cada jogada da IA e seleciona aquela com a maior pontuação retornada pelo Minimax. Ela também mede o tempo de execução e conta os nós avaliados para fins de análise de desempenho.
+### 2.4. Interface Gráfica e Histórico de Partidas
 
-```python
-def melhor_jogada_ia(tabuleiro, usar_poda):
-    global nos_avaliados
-    nos_avaliados = 0
-    inicio = time.perf_counter()
-    # ... loop de avaliação ...
-    tempo_ms = (time.perf_counter() - inicio) * 1000
-    return jogada, nos_avaliados, tempo_ms
-```
+A Figura 1 apresenta a interface desenvolvida com a biblioteca Tkinter para seleção de modo de jogo e visualização em tempo real dos dados de desempenho da IA. A classe `JogoDaVelhaGUI` gerencia dois frames principais: `frame_menu`, com botões para os três modos de jogo e acesso ao histórico, e `frame_jogo`, com a grade 3×3 interativa e o label de desempenho — exibido exclusivamente nos modos de IA — contendo os nós avaliados e o tempo de execução em ms.
 
-### 3.6 Interface Gráfica (Tkinter)
+Cada partida encerrada é registrada em `historico.json` com data, hora, modo de jogo e resultado. O histórico é exibido em uma janela secundária com tabela (`ttk.Treeview`), ordenada da partida mais recente para a mais antiga, com suporte a scroll e opção de limpeza.
 
-A classe `JogoDaVelhaGUI` gerencia toda a interface gráfica com dois frames principais:
+### 2.5. Resultados e Discussão
 
-- `frame_menu` — tela de seleção de modo de jogo, com botões para os três modos e acesso ao histórico.
-- `frame_jogo` — grade 3×3 de botões interativos, label de desempenho da IA (exibida somente nos modos de IA) e botão de retorno ao menu.
+A Figura 2 demonstra que ambos os algoritmos encontram sempre a jogada ótima — a IA é imbatível em qualquer modo. Entretanto, a Tabela 1 a seguir revela diferenças drásticas de eficiência computacional conforme o estado do tabuleiro.
 
-O label de desempenho é atualizado após cada jogada da IA, exibindo:
+**Figura 2.** Comparação de nós avaliados e tempo de execução entre Minimax puro e Minimax com Poda Alfa-Beta em diferentes estados do tabuleiro.
 
-```
-modo: com poda alfa-beta
-nós avaliados: 1457    tempo: 2.34 ms
-```
+**Tabela 1. Métricas de desempenho coletadas nos testes.**
 
-### 3.7 Histórico de Partidas
+| Algoritmo | Nós Avaliados | Tempo (ms) | Estado do Tabuleiro |
+|---|---|---|---|
+| Minimax Puro | ~255.168 | ~80–150 | 1ª jogada (tabuleiro vazio) |
+| Minimax + Poda Alfa-Beta | ~15.000–30.000 | ~5–15 | 1ª jogada (tabuleiro vazio) |
+| Minimax Puro | ~60.000–100.000 | ~20–50 | 2ª jogada (1 peça) |
+| Minimax + Poda Alfa-Beta | ~3.000–8.000 | ~1–5 | 2ª jogada (1 peça) |
+| Minimax Puro | < 1.000 | < 1 | Jogadas avançadas (5+ peças) |
+| Minimax + Poda Alfa-Beta | < 300 | < 1 | Jogadas avançadas (5+ peças) |
 
-Cada partida encerrada (vitória, derrota ou empate) é registrada em `historico.json` com data, hora, modo de jogo e resultado. O histórico é exibido em uma janela secundária com uma tabela (`ttk.Treeview`) ordenada da partida mais recente para a mais antiga, com suporte a scroll e opção de limpeza.
+### 2.6. Análise Comparativa: Vantagens e Desvantagens
 
----
+A análise empírica dos resultados evidenciou discrepâncias significativas relacionadas à eficiência algorítmica e ao custo computacional. A seguir, delineiam-se as vantagens e desvantagens de cada abordagem para o Jogo da Velha:
 
-## 4. Testes e Resultados de Desempenho
+#### 1. Minimax Puro
 
-Os testes foram realizados comparando o Minimax puro com o Minimax + Poda Alfa-Beta ao longo de diferentes estados do tabuleiro. Os valores coletados representam o número de nós avaliados e o tempo de processamento da jogada da IA.
+- **Vantagens:** Garante a decisão ótima por exploração exaustiva do espaço de estados. É simples de implementar e de verificar corretude, não dependendo de configuração de parâmetros adicionais. Serve como referência (*baseline*) confiável para mensurar o impacto de otimizações.
+- **Desvantagens:** Apresentou o maior custo computacional (~255.168 nós e ~80–150 ms na primeira jogada). Escala exponencialmente com a profundidade e o fator de ramificação da árvore, tornando-se computacionalmente inviável para jogos mais complexos (xadrez, Go) sem otimizações adicionais.
 
-### 4.1 Primeira Jogada (Tabuleiro Completamente Vazio)
+#### 2. Minimax com Poda Alfa-Beta
 
-Este é o cenário mais custoso, pois a árvore de decisão está em sua profundidade máxima (9 níveis) e todas as ramificações estão disponíveis.
+- **Vantagens:** Obteve redução de aproximadamente **90%** nos nós avaliados (~15.000–30.000 na primeira jogada) sem nenhuma perda na qualidade decisória — a jogada escolhida é sempre idêntica ao Minimax puro. Mantém a garantia de imbatibilidade da IA com custo computacional significativamente menor (~5–15 ms). Escala melhor para espaços de busca maiores, sendo a base de motores de xadrez profissionais combinados com heurísticas adicionais.
+- **Desvantagens:** Sua eficiência é sensível à ordem de exploração dos movimentos — sem ordenação prévia (testar o centro e os cantos antes das bordas), os cortes ocorrem com menor frequência. A função de avaliação simples (`+10`, `-10`, `0`) não considera profundidade, fazendo com que a IA não distinga uma vitória em 3 jogadas de uma em 7 movimentos.
 
-| Algoritmo | Nós Avaliados | Tempo (ms) |
-|---|---|---|
-| Minimax Puro | ~255.168 | ~80–150 ms |
-| Minimax + Poda Alfa-Beta | ~15.000–30.000 | ~5–15 ms |
+## 3. Conclusão
 
-> A poda reduz a quantidade de nós avaliados em aproximadamente **88–94%** na primeira jogada.
+Para o Jogo da Velha, o Minimax com Poda Alfa-Beta mostrou-se superior em eficiência sem comprometer a otimalidade das decisões. Conclui-se que a **Poda Alfa-Beta** é a escolha mais equilibrada: mantém a garantia de imbatibilidade da IA, reduz em aproximadamente 90% o custo computacional e escala melhor para problemas de maior dimensionalidade, superando a exploração exaustiva e desnecessária do Minimax puro para este e outros cenários adversariais.
 
-### 4.2 Segunda Jogada (1 Peça no Tabuleiro)
-
-Com uma posição já preenchida, a árvore diminui, mas ainda é profunda.
-
-| Algoritmo | Nós Avaliados | Tempo (ms) |
-|---|---|---|
-| Minimax Puro | ~60.000–100.000 | ~20–50 ms |
-| Minimax + Poda Alfa-Beta | ~3.000–8.000 | ~1–5 ms |
-
-### 4.3 Jogadas Avançadas (5+ Peças no Tabuleiro)
-
-Com o tabuleiro mais preenchido, ambos os algoritmos convergem rapidamente pois há menos ramificações.
-
-| Algoritmo | Nós Avaliados | Tempo (ms) |
-|---|---|---|
-| Minimax Puro | < 1.000 | < 1 ms |
-| Minimax + Poda Alfa-Beta | < 300 | < 1 ms |
-
-### 4.4 Resumo Comparativo
-
-```
-Nós Avaliados — 1ª Jogada
-
-Minimax Puro      ████████████████████████████████ ~255.000
-Minimax + Poda    ██                               ~20.000
-
-Redução: aproximadamente 92%
-```
-
-A poda não altera a decisão tomada pela IA em nenhum cenário. A jogada escolhida é sempre idêntica em ambos os modos — o que muda é exclusivamente a eficiência computacional para chegar a essa decisão.
-
----
-
-## 5. Análise dos Resultados
-
-### Por que a IA é imbatível?
-
-O Minimax explora exaustivamente toda a árvore de estados futuros do jogo. Como o Jogo da Velha possui um espaço de estados finito e completamente observável, a IA sempre encontra a jogada ótima. O pior resultado possível para a IA, contra um humano que joga perfeitamente, é o empate.
-
-### Qual é o ganho real da Poda Alfa-Beta?
-
-No contexto do Jogo da Velha, a poda é academicamente relevante por demonstrar o princípio de corte de ramos irrelevantes. Em jogos mais complexos (xadrez, Go), onde a busca exaustiva é computacionalmente inviável, a poda se torna indispensável. O projeto ilustra esse princípio de forma didática e mensurável.
-
-### Limitações
-
-- A IA não aplica ordenação de movimentos antes de explorar a árvore. A ordenação prévia (jogar primeiro no centro, depois nos cantos) aumentaria ainda mais a eficiência da poda, pois cortes aconteceriam mais cedo.
-- A função de avaliação (`+10`, `-10`, `0`) não considera profundidade, portanto a IA não distingue uma vitória em 3 jogadas de uma em 7. Para jogos mais profundos, seria recomendável descontar a pontuação pela profundidade (`+10 - profundidade`).
-
----
-
-## 6. Conclusão
-
-O projeto implementa com sucesso uma IA imbatível para o Jogo da Velha utilizando o algoritmo Minimax, demonstrando o impacto da Poda Alfa-Beta na eficiência computacional. Os resultados confirmam que a poda reduz o número de nós avaliados em cerca de **90%** sem qualquer perda de qualidade na decisão, validando sua utilidade prática.
-
-A interface gráfica em Tkinter permite interação intuitiva, exibição em tempo real dos dados de desempenho da IA e registro persistente do histórico de partidas, tornando o projeto adequado tanto para uso recreativo quanto para fins de análise e demonstração acadêmica.
-
----
-
-## 7. Referências
+## Referências
 
 - Russell, S.; Norvig, P. *Artificial Intelligence: A Modern Approach*. 4ª ed. Pearson, 2020.
-- Documentação oficial Python — módulo `tkinter`: https://docs.python.org/3/library/tkinter.html
-- Documentação oficial Python — módulo `math`: https://docs.python.org/3/library/math.html
+- Documentação oficial Python — módulo `tkinter`: <https://docs.python.org/3/library/tkinter.html>
+- Documentação oficial Python — módulo `math`: <https://docs.python.org/3/library/math.html>
