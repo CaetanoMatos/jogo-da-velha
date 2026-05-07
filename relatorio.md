@@ -28,6 +28,7 @@ O Jogo da Velha consiste em dois jogadores que alternam a marcação de `X` e `O
 
 A Figura 1 apresenta a interface desenvolvida para a seleção do modo de jogo e para a visualização em tempo real dos dados de desempenho da IA, permitindo a comparação direta entre as duas abordagens.
 
+![Interface do Jogo](img_game.png)
 **Figura 1.** Interface de seleção de modo de jogo e visualização de desempenho da IA (nós avaliados e tempo de execução em ms).
 
 ### 2.1. Representação do Tabuleiro e Estados Terminais
@@ -107,8 +108,6 @@ A Figura 1 apresenta a interface desenvolvida com a biblioteca Tkinter para sele
 Cada partida encerrada é registrada em `historico.json` com data, hora, modo de jogo e resultado. O histórico é exibido em uma janela secundária com tabela (`ttk.Treeview`), ordenada da partida mais recente para a mais antiga, com suporte a scroll e opção de limpeza.
 
 ### 2.5. Resultados Experimentais
-
-![Interface do Jogo](img_game.png)
 
 Os dados empíricos coletados durante a execução do sistema confirmam a imbatibilidade da IA em ambos os métodos (resultando apenas em vitórias da IA ou empates) e evidenciam o impacto drástico da otimização nos custos computacionais.
 
