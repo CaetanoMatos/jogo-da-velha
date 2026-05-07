@@ -106,22 +106,35 @@ A Figura 1 apresenta a interface desenvolvida com a biblioteca Tkinter para sele
 
 Cada partida encerrada é registrada em `historico.json` com data, hora, modo de jogo e resultado. O histórico é exibido em uma janela secundária com tabela (`ttk.Treeview`), ordenada da partida mais recente para a mais antiga, com suporte a scroll e opção de limpeza.
 
-### 2.5. Resultados e Discussão
+### 2.5. Resultados Experimentais
 
-A Figura 2 demonstra que ambos os algoritmos encontram sempre a jogada ótima — a IA é imbatível em qualquer modo. Entretanto, a Tabela 1 a seguir revela diferenças drásticas de eficiência computacional conforme o estado do tabuleiro.
+![Interface do Jogo](img_game.png)
 
-**Figura 2.** Comparação de nós avaliados e tempo de execução entre Minimax puro e Minimax com Poda Alfa-Beta em diferentes estados do tabuleiro.
+Os dados empíricos coletados durante a execução do sistema confirmam a imbatibilidade da IA em ambos os métodos (resultando apenas em vitórias da IA ou empates) e evidenciam o impacto drástico da otimização nos custos computacionais.
 
-**Tabela 1. Métricas de desempenho coletadas nos testes.**
+A análise do arquivo de histórico revela discrepâncias significativas na quantidade de nós avaliados e no tempo de processamento, especialmente nas jogadas iniciais, onde a árvore de decisão atinge sua profundidade máxima.
 
-| Algoritmo | Nós Avaliados | Tempo (ms) | Estado do Tabuleiro |
-|---|---|---|---|
-| Minimax Puro | ~255.168 | ~80–150 | 1ª jogada (tabuleiro vazio) |
-| Minimax + Poda Alfa-Beta | ~15.000–30.000 | ~5–15 | 1ª jogada (tabuleiro vazio) |
-| Minimax Puro | ~60.000–100.000 | ~20–50 | 2ª jogada (1 peça) |
-| Minimax + Poda Alfa-Beta | ~3.000–8.000 | ~1–5 | 2ª jogada (1 peça) |
-| Minimax Puro | < 1.000 | < 1 | Jogadas avançadas (5+ peças) |
-| Minimax + Poda Alfa-Beta | < 300 | < 1 | Jogadas avançadas (5+ peças) |
+**Tabela 1. Histórico de partidas e médias de desempenho**
+
+| # | Modo de Jogo | Resultado | Nós Avaliados (Total) | Tempo Total (ms) |
+| :---: | :--- | :--- | :--- | :--- |
+| 1 | IA com Poda | Empate | 4.594 | 9,64 |
+| 2 | IA sem Poda | Empate | 56.614 | 94,98 |
+| 3 | IA com Poda | Empate | 4.594 | 9,60 |
+| 4 | IA sem Poda | Empate | 60.694 | 100,52 |
+| 5 | IA com Poda | Vitória da IA | 4.593 | 9,70 |
+| 6 | IA sem Poda | Empate | 60.806 | 102,06 |
+| **-** | **MÉDIA: IA COM PODA** | **-** | **~4.594 nós** | **~9,65 ms** |
+| **-** | **MÉDIA: IA SEM PODA** | **-** | **~59.371 nós** | **~99,19 ms** |
+| **-** | **REDUÇÃO / GANHO** | **-** | **- 92,3%** | **- 90,3%** |
+
+#### Detalhamento das Observações:
+
+* **Eficiência na Abertura:** A primeira jogada é o momento de maior exigência computacional. Quando a IA inicia jogando na posição central (índice 4), o algoritmo Minimax Puro precisa avaliar **59.704 nós**, consumindo aproximadamente 99 ms. Em contrapartida, com a Poda Alfa-Beta ativada, a mesma decisão foi tomada avaliando apenas **4.089 nós** (tempo médio de 8,4 ms). Trata-se de uma supressão de mais de 93% das ramificações desnecessárias da árvore.
+* **Variação Conforme a Ordem das Jogadas:** Nos testes onde a configuração do tabuleiro levou o Minimax sem poda a realizar a primeira jogada na posição 0 (canto superior esquerdo), o algoritmo avaliou cerca de 55.504 nós. Apesar de ser um número ligeiramente inferior ao do movimento central, o tempo gasto continuou elevado (~92,5 ms), ressaltando o alto custo computacional da força bruta independentemente do quadrante inicial escolhido.
+* **Aceleração em Jogadas Avançadas:** Conforme o tabuleiro é preenchido, o fator de ramificação diminui vertiginosamente. Na terceira e quarta jogadas da IA (com poucas casas vazias restantes), ambas as abordagens resolvem o estado do tabuleiro em frações de milissegundo, avaliando geralmente entre 3 e 60 nós, demonstrando que o gargalo de desempenho do Jogo da Velha reside exclusivamente nos turnos iniciais. 
+
+Os dados do histórico comprovam numericamente que a Poda Alfa-Beta atinge exatamente o mesmo resultado que o Minimax tradicional (decisões ótimas), mas com uma fração irrisória do custo de processamento de memória e CPU.
 
 ### 2.6. Análise Comparativa: Vantagens e Desvantagens
 
@@ -130,18 +143,18 @@ A análise empírica dos resultados evidenciou discrepâncias significativas rel
 #### 1. Minimax Puro
 
 - **Vantagens:** Garante a decisão ótima por exploração exaustiva do espaço de estados. É simples de implementar e de verificar corretude, não dependendo de configuração de parâmetros adicionais. Serve como referência (*baseline*) confiável para mensurar o impacto de otimizações.
-- **Desvantagens:** Apresentou o maior custo computacional (~255.168 nós e ~80–150 ms na primeira jogada). Escala exponencialmente com a profundidade e o fator de ramificação da árvore, tornando-se computacionalmente inviável para jogos mais complexos (xadrez, Go) sem otimizações adicionais.
+- **Desvantagens:** Apresentou o maior custo computacional (avaliando até ~59.704 nós e consumindo ~99 ms na primeira jogada). Escala exponencialmente com a profundidade e o fator de ramificação da árvore, tornando-se computacionalmente inviável para jogos mais complexos (como xadrez ou Go) sem otimizações adicionais.
 
 #### 2. Minimax com Poda Alfa-Beta
 
-- **Vantagens:** Obteve redução de aproximadamente **90%** nos nós avaliados (~15.000–30.000 na primeira jogada) sem nenhuma perda na qualidade decisória — a jogada escolhida é sempre idêntica ao Minimax puro. Mantém a garantia de imbatibilidade da IA com custo computacional significativamente menor (~5–15 ms). Escala melhor para espaços de busca maiores, sendo a base de motores de xadrez profissionais combinados com heurísticas adicionais.
-- **Desvantagens:** Sua eficiência é sensível à ordem de exploração dos movimentos — sem ordenação prévia (testar o centro e os cantos antes das bordas), os cortes ocorrem com menor frequência. A função de avaliação simples (`+10`, `-10`, `0`) não considera profundidade, fazendo com que a IA não distinga uma vitória em 3 jogadas de uma em 7 movimentos.
+- **Vantagens:** Obteve redução de mais de **92%** nos nós avaliados (caindo para apenas ~4.089 nós na primeira jogada) sem nenhuma perda na qualidade decisória — a jogada escolhida é sempre idêntica à do Minimax puro. Mantém a garantia de imbatibilidade da IA com custo computacional significativamente menor (~8,4 ms). Escala melhor para espaços de busca maiores, sendo a base de motores de xadrez profissionais quando combinados com heurísticas adicionais.
+- **Desvantagens:** Sua eficiência é sensível à ordem de exploração dos movimentos — sem ordenação prévia (testar o centro e os cantos antes das bordas), os cortes ocorrem com menor frequência. A função de avaliação simples (retornando apenas `+10`, `-10` ou `0`) implementada neste projeto não considera a profundidade, fazendo com que a IA não distinga uma vitória rápida em 3 jogadas de uma vitória mais demorada em 7 movimentos.
 
 ## 3. Conclusão
 
-Para o Jogo da Velha, o Minimax com Poda Alfa-Beta mostrou-se superior em eficiência sem comprometer a otimalidade das decisões. Conclui-se que a **Poda Alfa-Beta** é a escolha mais equilibrada: mantém a garantia de imbatibilidade da IA, reduz em aproximadamente 90% o custo computacional e escala melhor para problemas de maior dimensionalidade, superando a exploração exaustiva e desnecessária do Minimax puro para este e outros cenários adversariais.
+A implementação e os testes empíricos realizados com o Jogo da Velha demonstraram de forma inequívoca que o algoritmo Minimax com Poda Alfa-Beta é superior em eficiência computacional sem comprometer a otimalidade das decisões. Os resultados extraídos do histórico de partidas provaram que a poda conseguiu reduzir em mais de 90% a quantidade média de nós avaliados e o tempo de processamento em comparação à abordagem tradicional, destacando-se de forma drástica nas jogadas de abertura.
 
-## Referências
+Conclui-se, portanto, que a Poda Alfa-Beta é uma otimização indispensável. Ela soluciona o gargalo de desempenho da busca exaustiva do Minimax puro, mantendo a garantia matemática de uma inteligência artificial imbatível e viabilizando a escalabilidade do método para cenários adversariais de maior complexidade e dimensionalidade.
 
 - Russell, S.; Norvig, P. *Artificial Intelligence: A Modern Approach*. 4ª ed. Pearson, 2020.
 - Documentação oficial Python — módulo `tkinter`: <https://docs.python.org/3/library/tkinter.html>

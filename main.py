@@ -123,6 +123,7 @@ class JogoDaVelhaGUI:
         self.label_desempenho = None
 
         self.historico = []
+        self.desempenho_ia = []
         self.carregar_historico()
 
         self.frame_menu = tk.Frame(self.root)
@@ -151,11 +152,26 @@ class JogoDaVelhaGUI:
             'IA_PURO': 'IA sem Poda',
             'HUMANO': '2 Jogadores'
         }
-        self.historico.append({
+
+        entrada = {
             'data_hora': datetime.now().strftime('%d/%m/%Y %H:%M'),
             'modo': modos.get(self.modo_jogo, self.modo_jogo),
             'resultado': resultado
-        })
+        }
+
+        if self.desempenho_ia:
+            total_nos = sum(j['nos_avaliados'] for j in self.desempenho_ia)
+            total_tempo = sum(j['tempo_ms'] for j in self.desempenho_ia)
+            entrada['desempenho_ia'] = {
+                'total_jogadas_ia': len(self.desempenho_ia),
+                'total_nos_avaliados': total_nos,
+                'total_tempo_ms': round(total_tempo, 2),
+                'media_nos_por_jogada': round(total_nos / len(self.desempenho_ia), 1),
+                'media_tempo_por_jogada_ms': round(total_tempo / len(self.desempenho_ia), 2),
+                'detalhes_por_jogada': self.desempenho_ia
+            }
+
+        self.historico.append(entrada)
         self.salvar_historico()
 
     def criar_menu(self):
@@ -188,6 +204,7 @@ class JogoDaVelhaGUI:
         self.modo_jogo = modo
         self.jogador_atual = HUMANO
         self.tabuleiro = [VAZIO] * 9
+        self.desempenho_ia = []
 
         self.frame_menu.pack_forget()
         self.frame_jogo.pack(padx=10, pady=10)
@@ -256,6 +273,12 @@ class JogoDaVelhaGUI:
 
             self.atualizar_label_desempenho(nos, tempo_ms)
 
+            self.desempenho_ia.append({
+                'jogada_posicao': movimento_ia,
+                'nos_avaliados': nos,
+                'tempo_ms': round(tempo_ms, 2)
+            })
+
             if movimento_ia != -1:
                 self.tabuleiro[movimento_ia] = IA
                 self.botoes[movimento_ia].config(text=IA, fg='red')
@@ -304,6 +327,7 @@ class JogoDaVelhaGUI:
     def reiniciar_jogo(self):
         self.tabuleiro = [VAZIO] * 9
         self.jogador_atual = HUMANO
+        self.desempenho_ia = []
         for btn in self.botoes:
             btn.config(text=VAZIO)
         if self.label_desempenho:
@@ -326,18 +350,22 @@ class JogoDaVelhaGUI:
                      font=('Arial', 11), fg='gray', pady=20).pack()
             return
 
-        colunas = ('#', 'Data/Hora', 'Modo', 'Resultado')
+        colunas = ('#', 'Data/Hora', 'Modo', 'Resultado', 'Nós Total', 'Tempo Total (ms)')
         tree = ttk.Treeview(frame, columns=colunas, show='headings', height=15)
 
         tree.heading('#', text='#')
         tree.heading('Data/Hora', text='Data/Hora')
         tree.heading('Modo', text='Modo')
         tree.heading('Resultado', text='Resultado')
+        tree.heading('Nós Total', text='Nós Total')
+        tree.heading('Tempo Total (ms)', text='Tempo (ms)')
 
         tree.column('#', width=40, anchor='center')
         tree.column('Data/Hora', width=135, anchor='center')
         tree.column('Modo', width=130, anchor='center')
-        tree.column('Resultado', width=165, anchor='center')
+        tree.column('Resultado', width=150, anchor='center')
+        tree.column('Nós Total', width=90, anchor='center')
+        tree.column('Tempo Total (ms)', width=100, anchor='center')
 
         scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=tree.yview)
         tree.configure(yscrollcommand=scrollbar.set)
@@ -345,7 +373,56 @@ class JogoDaVelhaGUI:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         for i, partida in enumerate(reversed(self.historico), 1):
-            tree.insert('', tk.END, values=(i, partida['data_hora'], partida['modo'], partida['resultado']))
+            desemp = partida.get('desempenho_ia', {})
+            nos_total = desemp.get('total_nos_avaliados', '-')
+            tempo_total = desemp.get('total_tempo_ms', '-')
+            tree.insert('', tk.END, values=(
+                i,
+                partida['data_hora'],
+                partida['modo'],
+                partida['resultado'],
+                nos_total,
+                tempo_total
+            ))
+
+        def mostrar_detalhes(event):
+            item = tree.selection()
+            if not item:
+                return
+            valores = tree.item(item[0], 'values')
+            idx_visual = int(valores[0])
+            idx_real = len(self.historico) - idx_visual
+            partida = self.historico[idx_real]
+            desemp = partida.get('desempenho_ia')
+
+            if not desemp:
+                messagebox.showinfo("Detalhes", "Sem dados de desempenho da IA para esta partida.", parent=janela)
+                return
+
+            texto = f"Modo: {partida['modo']}\n"
+            texto += f"Resultado: {partida['resultado']}\n"
+            texto += f"{'─' * 40}\n"
+            texto += f"Total de jogadas da IA: {desemp['total_jogadas_ia']}\n"
+            texto += f"Total de nós avaliados: {desemp['total_nos_avaliados']}\n"
+            texto += f"Tempo total: {desemp['total_tempo_ms']} ms\n"
+            texto += f"Média de nós/jogada: {desemp['media_nos_por_jogada']}\n"
+            texto += f"Média de tempo/jogada: {desemp['media_tempo_por_jogada_ms']} ms\n"
+            texto += f"{'─' * 40}\n"
+
+            for j, det in enumerate(desemp.get('detalhes_por_jogada', []), 1):
+                texto += f"  Jogada {j}: pos={det['jogada_posicao']}, "
+                texto += f"nós={det['nos_avaliados']}, "
+                texto += f"tempo={det['tempo_ms']} ms\n"
+
+            janela_det = tk.Toplevel(janela)
+            janela_det.title("Detalhes de Desempenho")
+            tk.Label(janela_det, text=texto, font=('Courier', 10), justify=tk.LEFT,
+                     padx=15, pady=15).pack()
+
+        tree.bind('<Double-1>', mostrar_detalhes)
+
+        tk.Label(janela, text="(duplo clique em uma partida para ver detalhes da IA)",
+                 font=('Arial', 9), fg='gray').pack()
 
         def limpar():
             if messagebox.askyesno("confirmar", "limpar todo o histórico?", parent=janela):
